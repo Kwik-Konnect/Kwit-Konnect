@@ -57,12 +57,20 @@ export default function SignUpPage() {
       if (error) throw error
 
       if (data?.user) {
-        toast({
-          title: "Account created successfully!",
-          description: "Welcome to Kwik Konnect",
-        })
-        router.push("/dashboard")
-        router.refresh()
+        if (!data.session) {
+          toast({
+            title: "Check your email",
+            description: "We sent you a confirmation link. Please click it to verify your account before logging in.",
+          })
+          router.push("/auth/login")
+        } else {
+          toast({
+            title: "Account created successfully!",
+            description: "Welcome to Kwik Konnect",
+          })
+          router.push("/dashboard")
+          router.refresh()
+        }
       }
     } catch (error: any) {
       console.error("[v0] Signup error:", error)

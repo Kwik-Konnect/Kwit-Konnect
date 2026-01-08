@@ -7,8 +7,19 @@ import { JobSwiper } from "@/components/jobs/job-swiper"
 import type { Job } from "@/components/jobs/job-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Briefcase, Heart, X, Filter } from "lucide-react"
+import { Briefcase, Heart, X, Filter, LayoutGrid, Map as MapIcon, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { JobCard } from "@/components/jobs/job-card"
+import dynamic from "next/dynamic"
+
+const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[600px] flex items-center justify-center bg-muted/20 border-2 rounded-lg">
+      <p className="text-muted-foreground animate-pulse">Loading Map...</p>
+    </div>
+  ),
+})
 
 const sampleJobs: Job[] = [
   {
@@ -76,6 +87,7 @@ const sampleJobs: Job[] = [
 export default function JobsPage() {
   const [appliedJobs, setAppliedJobs] = useState<Job[]>([])
   const [skippedJobs, setSkippedJobs] = useState<Job[]>([])
+  const [viewMode, setViewMode] = useState<"swipe" | "grid" | "map">("swipe")
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -85,22 +97,91 @@ export default function JobsPage() {
           <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             {/* Main swipe area */}
             <div>
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h1 className="text-2xl font-bold sm:text-3xl">Find Your Next Job</h1>
-                  <p className="mt-1 text-muted-foreground">Swipe right to apply, left to skip</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {viewMode === "swipe" ? "Swipe right to apply, left to skip" : `Explore ${sampleJobs.length} available opportunities`}
+                  </p>
                 </div>
-                <Button variant="outline" size="sm" className="hidden sm:flex bg-transparent">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filters
-                </Button>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex rounded-lg border border-border p-1 bg-muted/50">
+                    <Button
+                      variant={viewMode === "swipe" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("swipe")}
+                      className="h-8 gap-2"
+                    >
+                      <Layers className="h-4 w-4" />
+                      <span className="hidden sm:inline">Swipe</span>
+                    </Button>
+                    <Button
+                      variant={viewMode === "grid" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("grid")}
+                      className="h-8 gap-2"
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                      <span className="hidden sm:inline">Grid</span>
+                    </Button>
+                    <Button
+                      variant={viewMode === "map" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewMode("map")}
+                      className="h-8 gap-2"
+                    >
+                      <MapIcon className="h-4 w-4" />
+                      <span className="hidden sm:inline">Map</span>
+                    </Button>
+                  </div>
+
+                  <Button variant="outline" size="sm" className="bg-transparent h-10">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filters
+                  </Button>
+                </div>
               </div>
 
-              <JobSwiper
-                jobs={sampleJobs}
-                onSwipeLeft={(job) => setSkippedJobs((prev) => [...prev, job])}
-                onSwipeRight={(job) => setAppliedJobs((prev) => [...prev, job])}
-              />
+              {viewMode === "swipe" && (
+                <JobSwiper
+                  jobs={sampleJobs}
+                  onSwipeLeft={(job) => setSkippedJobs((prev) => [...prev, job])}
+                  onSwipeRight={(job) => setAppliedJobs((prev) => [...prev, job])}
+                />
+              )}
+
+              {viewMode === "grid" && (
+                <div className="grid gap-6 sm:grid-cols-2">
+                  {sampleJobs.map((job) => (
+                    <JobCard key={job.id} job={job} className="h-full active:cursor-default" />
+                  ))}
+                </div>
+              )}
+
+              {viewMode === "map" && (
+                <div className="h-[600px]">
+                  <LeafletMap
+                    items={sampleJobs.map((job, index) => {
+                      // Approximate locations for demo purposes
+                      const baseLat = 8.46
+                      const baseLng = -13.23
+                      // Add some randomness so they don't stack perfectly if we use the same base
+                      const isFreetown = job.location.includes("Freetown")
+
+                      return {
+                        id: job.id,
+                        lat: isFreetown ? baseLat + (index * 0.01) : 7.96 + (index * 0.01),
+                        lng: isFreetown ? baseLng + (index * 0.01) : -11.74 + (index * 0.01),
+                        title: job.title,
+                        description: `${job.company} • ${job.salary}`,
+                      }
+                    })}
+                    height="100%"
+                    center={[8.46, -13.23]}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Sidebar - hidden on mobile */}
