@@ -1,5 +1,8 @@
 "use client"
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase-client"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useRole } from "@/lib/role-context"
@@ -22,11 +25,41 @@ import {
   Edit,
   ExternalLink,
   Clock,
+  Loader2,
 } from "lucide-react"
 
 export default function DashboardPage() {
   const { role } = useRole()
-  const userName = "Aminata" // Could come from localStorage or context
+  const router = useRouter()
+  const supabase = createClient()
+  const [isLoading, setIsLoading] = useState(true)
+  const [userName, setUserName] = useState("Aminata")
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        router.push("/auth/login")
+      } else {
+        setUserName(session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "User")
+        setIsLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [router, supabase])
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-muted-foreground animate-pulse font-medium">Authenticating...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Mock data for talent
   const savedCVs = [
